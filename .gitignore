@@ -1,0 +1,16 @@
+# Environnement Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Variables d'environnement (NE JAMAIS committer !)
+.env
+
+# Outils divers
+.DS_Store
+*.log
+dist/
+build/

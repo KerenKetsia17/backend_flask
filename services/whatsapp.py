@@ -16,8 +16,8 @@ WHATSAPP_ACCESS_TOKEN = os.environ.get("WHATSAPP_ACCESS_TOKEN", "")
 # Identifiant du numéro de téléphone WhatsApp Business enregistré sur Meta
 WHATSAPP_PHONE_NUMBER_ID = os.environ.get("WHATSAPP_PHONE_NUMBER_ID", "")
 
-# URL de base de l'API Graph de Meta (v19.0 est la dernière version stable)
-GRAPH_API_URL = "https://graph.facebook.com/v19.0"
+# URL de base de l'API Graph de Meta
+GRAPH_API_URL = "https://graph.facebook.com/v22.0"
 
 
 def send_text(phone: str, message: str) -> dict:

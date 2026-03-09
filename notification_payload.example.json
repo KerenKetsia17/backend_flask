@@ -1,0 +1,12 @@
+{
+  "_comment": "EXEMPLE — Ne jamais mettre de vraies valeurs ici. Copier ce fichier en notification_payload.json et le gitignorer.",
+
+  "whatsapp_access_token": "EAAY5OPQ...(votre token Meta, à ne pas commiter)",
+  "phone_number_id": "975172402351458",
+
+  "phone": "221771234567",
+
+  "message": " CAMIONSOUF — Suivi de commande\n============================\nVotre livraison est à 25 % ! Notre chauffeur est en route vers votre adresse.",
+
+  "tracking_url": "https://camionsuf.vercel.app/suivi?cmd=CMD-1234567890"
+}

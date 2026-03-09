@@ -9,6 +9,9 @@ __pycache__/
 # Variables d'environnement (NE JAMAIS committer !)
 .env
 
+# Fichier de payload réel (contient tokens et numéros clients)
+notification_payload.json
+
 # Outils divers
 .DS_Store
 *.log

@@ -1,74 +1,89 @@
 """
-Service d'envoi de messages WhatsApp via Meta Cloud API.
-Doc : https://developers.facebook.com/docs/whatsapp/cloud-api/guides/send-messages
+Service WhatsApp — CamionSouf
+Envoie des messages via l'API Meta WhatsApp Cloud.
 """
 
 import os
+import logging
 import requests
-from dotenv import load_dotenv
 
-load_dotenv()
+logger = logging.getLogger(__name__)
 
-# Token d'accès à l'API Meta (obtenu sur developers.facebook.com → votre app WhatsApp)
-# Peut être temporaire (24h) ou permanent (System User Token)
-WHATSAPP_ACCESS_TOKEN = os.environ.get("WHATSAPP_ACCESS_TOKEN", "")
-
-# Identifiant du numéro de téléphone WhatsApp Business enregistré sur Meta
-WHATSAPP_PHONE_NUMBER_ID = os.environ.get("WHATSAPP_PHONE_NUMBER_ID", "")
-
-# URL de base de l'API Graph de Meta
-GRAPH_API_URL = "https://graph.facebook.com/v22.0"
+_WA_BASE_URL = "https://graph.facebook.com/v22.0"
 
 
-def send_text(phone: str, message: str) -> dict:
-    """
-    Envoie un message texte WhatsApp à `phone` via Meta Cloud API.
+def _normalize_phone(phone: str) -> str:
+    """Conserve uniquement les chiffres (supprime +, espaces, tirets...)."""
+    return "".join(ch for ch in (phone or "") if ch.isdigit())
 
-    Paramètres :
-        phone   — numéro international sans + ni espaces (ex: "221771234567")
-        message — texte à envoyer (supporte les emojis et les sauts de ligne)
 
-    Retourne le JSON de réponse de Meta (contient l'ID du message envoyé).
-    Lève EnvironmentError si les variables d'env sont manquantes.
-    Lève RuntimeError si l'API Meta retourne une erreur HTTP.
-    """
-    # Vérifie que les variables d'environnement ont bien été définies
-    if not WHATSAPP_ACCESS_TOKEN or not WHATSAPP_PHONE_NUMBER_ID:
+def _get_credentials() -> tuple[str, str]:
+    """Lit les credentials depuis les variables d'environnement."""
+    token = os.environ.get("WHATSAPP_ACCESS_TOKEN", "")
+    phone_id = os.environ.get("WHATSAPP_PHONE_NUMBER_ID", "")
+    if not token or not phone_id:
         raise EnvironmentError(
-            "WHATSAPP_ACCESS_TOKEN et WHATSAPP_PHONE_NUMBER_ID doivent être définis dans .env"
+            "WHATSAPP_ACCESS_TOKEN et WHATSAPP_PHONE_NUMBER_ID doivent être définis."
         )
+    return token, phone_id
 
-    # Construction de l'URL de l'endpoint Meta pour envoyer un message
-    # Format : https://graph.facebook.com/v19.0/{PHONE_NUMBER_ID}/messages
-    url = f"{GRAPH_API_URL}/{WHATSAPP_PHONE_NUMBER_ID}/messages"
 
-    # Corps de la requête selon la spécification Meta Cloud API
+def send_text_message(to: str, body: str) -> dict:
+    """
+    Envoie un message texte WhatsApp à un numéro donné.
+
+    :param to:   Numéro destinataire au format international sans '+' (ex: 221771234567)
+    :param body: Contenu du message (max 4096 caractères)
+    :returns:    Réponse JSON de l'API Meta
+    :raises requests.HTTPError: si l'API répond avec un code d'erreur
+    """
+    access_token, phone_number_id = _get_credentials()
+    normalized_to = _normalize_phone(to)
+
+    if not normalized_to:
+        raise ValueError("Numéro destinataire invalide (aucun chiffre détecté).")
+
+    url = f"{_WA_BASE_URL}/{phone_number_id}/messages"
+    headers = {
+        "Authorization": f"Bearer {access_token}",
+        "Content-Type": "application/json",
+    }
     payload = {
-        "messaging_product": "whatsapp",  # obligatoire, indique qu'on utilise WhatsApp
-        "recipient_type": "individual",   # envoi à une seule personne (pas un groupe)
-        "to": phone,                      # numéro destinataire (format E.164 sans +)
-        "type": "text",                   # type de message : texte simple
+        "messaging_product": "whatsapp",
+        "to": normalized_to,
+        "type": "text",
         "text": {
-            "preview_url": True,          # Meta génère automatiquement un aperçu du lien de suivi
-            "body": message,              # contenu du message WhatsApp
+            "body": body,
+            "preview_url": False,
         },
     }
 
-    # En-têtes HTTP : authentification Bearer + type JSON
-    headers = {
-        "Authorization": f"Bearer {WHATSAPP_ACCESS_TOKEN}",  # token d'accès Meta
-        "Content-Type": "application/json",
-    }
-
-    # Envoi de la requête POST vers l'API Meta (timeout 10 s pour éviter les blocages)
     response = requests.post(url, json=payload, headers=headers, timeout=10)
 
-    # Si l'API retourne un code d'erreur HTTP (4xx / 5xx) → on lève une exception
-    # Exemple d'erreur : token expiré (401), numéro non enregistré (400)
-    if not response.ok:
-        raise RuntimeError(
-            f"Meta API error {response.status_code}: {response.text}"
+    if response.status_code == 401:
+        raise PermissionError(
+            "Token WhatsApp expiré ou invalide. "
+            "Renouvelez WHATSAPP_ACCESS_TOKEN sur Meta Developers → WhatsApp → Configuration API."
+        )
+    if response.status_code == 403:
+        raise PermissionError(
+            "Accès refusé par l'API Meta (403). Vérifiez les permissions du token et du numéro."
         )
 
-    # Retourne la réponse JSON de Meta (contient messages[0].id si succès)
+    if response.status_code >= 400:
+        try:
+            error_payload = response.json()
+            meta_error = error_payload.get("error", {})
+            message = meta_error.get("message") or "Erreur inconnue"
+            code = meta_error.get("code")
+            subcode = meta_error.get("error_subcode")
+            fbtrace = meta_error.get("fbtrace_id")
+            raise requests.HTTPError(
+                f"Meta API error: {message} (code={code}, subcode={subcode}, fbtrace_id={fbtrace})"
+            )
+        except ValueError:
+            # Réponse non JSON
+            response.raise_for_status()
+
+    response.raise_for_status()
     return response.json()

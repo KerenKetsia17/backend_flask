@@ -1,0 +1,117 @@
+{
+  "_readme": {
+    "description": "Spécification des requêtes à envoyer au backend Flask CamionSouf pour déclencher les notifications WhatsApp client à chaque étape de livraison.",
+    "endpoint": "POST https://camionsuf-backend.onrender.com/track",
+    "content_type": "application/json",
+    "authentication": "Le champ 'secret' doit correspondre à la variable TRACKING_SECRET du .env backend.",
+    "variables_a_remplacer": [
+      "{{PHONE_CLIENT}}    → numéro du client, format international sans '+' (ex: 221771234567)",
+      "{{TRACKING_URL}}   → URL de suivi en direct de la commande (ex: lien Google Maps live)",
+      "{{TRACKING_SECRET}} → valeur de TRACKING_SECRET partagée avec le backend"
+    ]
+  },
+
+  "etapes_livraison": [
+    {
+      "step": 1,
+      "progress": "25%",
+      "label": "Commande confirmée — en cours de préparation",
+      "http_method": "POST",
+      "url": "https://camionsuf-backend.onrender.com/track",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "phone": "{{PHONE_CLIENT}}",
+        "message": "Votre commande a bien été confirmée et est en cours de préparation. Nous vous informerons dès qu'elle sera prise en charge par notre livreur.",
+        "url": "{{TRACKING_URL}}",
+        "secret": "{{TRACKING_SECRET}}"
+      }
+    },
+    {
+      "step": 2,
+      "progress": "50%",
+      "label": "Commande en route",
+      "http_method": "POST",
+      "url": "https://camionsuf-backend.onrender.com/track",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "phone": "{{PHONE_CLIENT}}",
+        "message": "🚚 Votre commande est en route ! Le camion a pris la route et se dirige vers vous. Vous pouvez suivre sa position en temps réel via le lien ci-dessous.",
+        "url": "{{TRACKING_URL}}",
+        "secret": "{{TRACKING_SECRET}}"
+      }
+    },
+    {
+      "step": 3,
+      "progress": "75%",
+      "label": "Arrivée imminente",
+      "http_method": "POST",
+      "url": "https://camionsuf-backend.onrender.com/track",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "phone": "{{PHONE_CLIENT}}",
+        "message": "📍 Le camion approche de votre position ! Soyez prêt(e) à réceptionner votre commande. Consultez le suivi en direct pour connaître le temps d'arrivée estimé.",
+        "url": "{{TRACKING_URL}}",
+        "secret": "{{TRACKING_SECRET}}"
+      }
+    },
+    {
+      "step": 4,
+      "progress": "100%",
+      "label": "Commande livrée",
+      "http_method": "POST",
+      "url": "https://camionsuf-backend.onrender.com/track",
+      "headers": {
+        "Content-Type": "application/json"
+      },
+      "body": {
+        "phone": "{{PHONE_CLIENT}}",
+        "message": "🎉 Votre commande a été livrée avec succès ! Merci pour votre confiance. N'hésitez pas à nous contacter si vous avez la moindre question.",
+        "secret": "{{TRACKING_SECRET}}"
+      }
+    }
+  ],
+
+  "exemple_concret": {
+    "description": "Exemple réel pour un client dont le numéro est 221785297857, à l'étape 50 %",
+    "commande": "curl -X POST https://camionsuf-backend.onrender.com/track -H \"Content-Type: application/json\" -d @exemple_50pct.json",
+    "body": {
+      "phone": "221785297857",
+      "message": "🚚 Votre commande est en route ! Le camion a pris la route et se dirige vers vous. Vous pouvez suivre sa position en temps réel via le lien ci-dessous.",
+      "url": "https://maps.example.com/live/CMD001",
+      "secret": "REMPLACER_PAR_LE_VRAI_SECRET"
+    }
+  },
+
+  "reponse_attendue": {
+    "success": true,
+    "phone": "221785297857",
+    "preview": "CAMIONSOUF — Suivi de commande\n============================\n🚚 Votre commande est en route !..."
+  },
+
+  "schema_reponse_erreur": {
+    "success": false,
+    "error": "Description de l'erreur (ex: secret invalide, phone manquant, etc.)"
+  },
+
+  "codes_http": {
+    "200": "Notification envoyée avec succès",
+    "400": "Paramètres manquants ou invalides (phone ou message absent)",
+    "401": "Secret incorrect ou manquant",
+    "500": "Erreur serveur interne (ex: WhatsApp API indisponible)"
+  },
+
+  "notes_integration": [
+    "Remplacer MON_SECRET par la vraie valeur TRACKING_SECRET fournie par l'équipe backend",
+    "Remplacer votre-domaine.com par l'URL de production réelle",
+    "Le champ url est optionnel pour l'étape 100% (livraison terminée)",
+    "Le numéro phone doit être au format international sans + (ex: 221 pour Sénégal)",
+    "Ne pas envoyer plusieurs notifications simultanées pour le même numéro",
+    "Le serveur retourne HTTP 401 (et non 403) en cas de secret invalide"
+  ]
+}
